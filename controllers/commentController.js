@@ -1,14 +1,41 @@
 const fs = require('fs');
 const path = require('path');
 
-const DATA_FILE = path.join(__dirname, '../data/comments.json');
+// Allow mounting a persistent directory (e.g. Render persistent disk) via DATA_DIR env var.
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../data');
+const DATA_FILE = path.join(DATA_DIR, 'comments.json');
 
-// Helper: read and write
-function readComments() {
-  return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8') || '[]');
+// Ensure data directory exists (safe on startup)
+if (!fs.existsSync(DATA_DIR)) {
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  } catch (err) {
+    console.error('Failed to create data directory', DATA_DIR, err);
+  }
 }
+
+// Helper: read and write with safety checks
+function readComments() {
+  try {
+    if (!fs.existsSync(DATA_FILE)) return [];
+    const raw = fs.readFileSync(DATA_FILE, 'utf8');
+    return JSON.parse(raw || '[]');
+  } catch (err) {
+    console.error('Failed to read comments file', err);
+    return [];
+  }
+}
+
 function saveComments(comments) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(comments, null, 2));
+  try {
+    // write to a tmp file and rename for atomic behavior
+    const tmp = DATA_FILE + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(comments, null, 2));
+    fs.renameSync(tmp, DATA_FILE);
+  } catch (err) {
+    console.error('Failed to save comments file', err);
+    throw err;
+  }
 }
 
 // Helper: nest flat comments to tree
