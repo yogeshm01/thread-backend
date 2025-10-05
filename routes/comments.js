@@ -12,4 +12,5 @@ router.post('/', commentController.createComment);
 router.post('/:id/like', commentController.likeComment);
 // Delete a comment (and its descendants)
 router.delete('/:id', commentController.deleteComment);
+
 module.exports = router;
